@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import pu.fmi.wordle.logic.GameService;
 import pu.fmi.wordle.logic.UnknownWordException;
-import pu.fmi.wordle.model.Guess;
 
 @Controller
 @RequestMapping("/games")
@@ -32,27 +31,7 @@ public class GameController {
   @GetMapping("/{gameId}")
   public String showGame(@PathVariable String gameId, Model model) {
     var game = gameService.getGame(gameId);
-    var guesses = game.getGuesses();
-    
-    boolean gameWon = false;
-    if (guesses.size() > 0) {
-    	gameWon = true;
-    	var matches = guesses.get(guesses.size() - 1).getMatches();
-    	for (int i = 0; i < matches.length(); i++) {
-    		if (matches.charAt(i) != Guess.PLACE_MATCH) {
-    			gameWon = false;
-    			break;
-    		}
-    	}
-    }
-    
-    boolean gameLost = !gameWon && game.getGuesses().size() >= game.getMaxGuesses();
-    
     model.addAttribute("game", game);
-    model.addAttribute("gameWon", gameWon);
-    model.addAttribute("attempts", guesses.size());
-    model.addAttribute("gameLost", gameLost);
-    
     return "wordle";
   }
 
@@ -65,9 +44,6 @@ public class GameController {
       var game = gameService.getGame(gameId);
       model.addAttribute("game", game);
       model.addAttribute("error", format("[%s] word doesn't exist", guess));
-      model.addAttribute("attempts", game.getGuesses().size());
-      model.addAttribute("gameWon", false);
-      model.addAttribute("gameLost", false);
       return "wordle";
     }
   }

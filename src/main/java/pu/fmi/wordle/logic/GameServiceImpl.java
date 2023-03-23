@@ -1,23 +1,27 @@
 package pu.fmi.wordle.logic;
 
+import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import pu.fmi.wordle.model.Game;
-import pu.fmi.wordle.model.GameRepo;
+import pu.fmi.wordle.model.Game.GameState;
+import pu.fmi.wordle.model.GameRepository;
 import pu.fmi.wordle.model.Guess;
 import pu.fmi.wordle.model.WordRepo;
 
-@Component
+@Service
+@Transactional
 public class GameServiceImpl implements GameService {
 
-  final GameRepo gameRepo;
+  final GameRepository gameRepo;
 
   final WordRepo wordRepo;
 
-  public GameServiceImpl(GameRepo gameRepo, WordRepo wordRepo) {
+  public GameServiceImpl(GameRepository gameRepo, WordRepo wordRepo) {
     this.gameRepo = gameRepo;
     this.wordRepo = wordRepo;
   }
@@ -36,7 +40,7 @@ public class GameServiceImpl implements GameService {
 
   @Override
   public Game getGame(String id) {
-    var game = gameRepo.get(id);
+    var game = gameRepo.getReferenceById(id);
     if (game == null) throw new GameNotFoundException(id);
     return game;
   }
@@ -44,6 +48,10 @@ public class GameServiceImpl implements GameService {
   @Override
   public Game makeGuess(String id, String word) {
     var game = getGame(id);
+    if (game.getState() != GameState.ONGOING) {
+      throw new GameOverException();
+    }
+
     if (!wordRepo.exists(word)) throw new UnknownWordException(word);
 
     var guess = new Guess();
@@ -52,6 +60,13 @@ public class GameServiceImpl implements GameService {
     guess.setMatches(findMatches(game.getWord(), word));
     game.getGuesses().add(guess);
     updateAlphabetMatches(game);
+
+    if (game.getWord().equals(word)) {
+      game.setState(GameState.WIN);
+    } else if (game.getGuesses().size() == game.getMaxGuesses()) {
+      game.setState(GameState.LOSS);
+    }
+
     return game;
   }
 
@@ -94,5 +109,15 @@ public class GameServiceImpl implements GameService {
     }
 
     return match;
+  }
+
+  @Override
+  public Collection<Game> listLast10() {
+    // Set the status of all games older than 24 hours to loss
+	  Collection<Game> oldGames = gameRepo.findByStateAndStartedOnBefore(GameState.ONGOING, LocalDateTime.now().minusHours(24));
+	  oldGames.forEach(game -> game.setState(GameState.LOSS));
+	
+    // Show the last 10 not ongoing games ordered by start time descending
+    return gameRepo.findFirst10ByStateNotOrderByStartedOnDesc(GameState.ONGOING);
   }
 }
