@@ -40,9 +40,10 @@ public class GameServiceImpl implements GameService {
 
   @Override
   public Game getGame(String id) {
-    var game = gameRepo.getReferenceById(id);
-    if (game == null) throw new GameNotFoundException(id);
-    return game;
+    var optGame = gameRepo.findById(id);
+    if (optGame.isEmpty())
+      throw new GameNotFoundException(id);
+    return optGame.get();
   }
 
   @Override
@@ -52,7 +53,8 @@ public class GameServiceImpl implements GameService {
       throw new GameOverException();
     }
 
-    if (!wordRepo.exists(word)) throw new UnknownWordException(word);
+    if (!wordRepo.exists(word))
+      throw new UnknownWordException(word);
 
     var guess = new Guess();
     guess.setWord(word);
@@ -89,9 +91,7 @@ public class GameServiceImpl implements GameService {
 
   private void updateAlphabetMatches(Game game) {
     StringBuilder result = new StringBuilder();
-    game.getAlphabet()
-        .chars()
-        .map(letter -> getLetterMatch(game.getGuesses(), (char) letter))
+    game.getAlphabet().chars().map(letter -> getLetterMatch(game.getGuesses(), (char) letter))
         .forEach(letter -> result.append((char) letter));
     game.setAlphabetMatches(result.toString());
   }
@@ -113,11 +113,8 @@ public class GameServiceImpl implements GameService {
 
   @Override
   public Collection<Game> listLast10() {
-    // Set the status of all games older than 24 hours to loss
-    Collection<Game> oldGames = gameRepo.findByStateAndStartedOnBefore(GameState.ONGOING, LocalDateTime.now().minusHours(24));
-    oldGames.forEach(game -> game.setState(GameState.LOSS));
-	
-    // Show the last 10 not ongoing games ordered by start time descending
-    return gameRepo.findFirst10ByStateNotOrderByStartedOnDesc(GameState.ONGOING);
+    gameRepo.findByStateAndStartedOnBefore(GameState.ONGOING, LocalDateTime.now().minusHours(24))
+        .forEach(game -> game.setState(GameState.LOSS));
+    return gameRepo.findTop10ByStateNotOrderByStartedOnDesc(GameState.ONGOING);
   }
 }

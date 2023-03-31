@@ -6,11 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import pu.fmi.wordle.model.Game.GameState;
 
 public interface GameRepository extends JpaRepository<Game, String> {
-  // Returns the last 10 games with state not equal to the given one ordered
+  // TODO: At the moment the method returns all games with state not equal to the given one.
+  // Rename the method to return the last 10 games with state not equal to the given one ordered
   // by startedOn descending
-  Collection<Game> findFirst10ByStateNotOrderByStartedOnDesc(GameState state);
+  Collection<Game> findTop10ByStateNotOrderByStartedOnDesc(GameState state);
 
-  // Returns all games with the given status that are started before the
+  // TODO: Create method that returns all games with the given status that are started before the
   // given time
   Collection<Game> findByStateAndStartedOnBefore(GameState state, LocalDateTime startedOn);
 }
